@@ -1,0 +1,4 @@
+# The README tables come from committed sources only. Child modules do not
+# commit lock files, so reading them would make local and CI output differ.
+settings:
+  lockfile: false

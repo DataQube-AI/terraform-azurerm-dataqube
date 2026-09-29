@@ -1,0 +1,106 @@
+# DataQube production: the quickstart's shape with the installation's own
+# network and Azure Database for PostgreSQL (private access, point-in-time
+# restore). Sign-in through your own identity provider, a private cluster and
+# your own certificate are being added. See README.md.
+
+terraform {
+  required_version = ">= 1.11"
+  required_providers {
+    azurerm    = { source = "hashicorp/azurerm", version = "~> 5.6" }
+    kubernetes = { source = "hashicorp/kubernetes", version = "~> 3.2" }
+    helm       = { source = "hashicorp/helm", version = "~> 3.3" }
+    random     = { source = "hashicorp/random", version = "~> 3.9" }
+    time       = { source = "hashicorp/time", version = "~> 0.13" }
+  }
+  # Configure a remote, encrypted, access-controlled backend (e.g. azurerm)
+  # before a real installation; see README.md.
+}
+
+provider "azurerm" {
+  subscription_id = var.subscription_id
+  features {
+    key_vault {
+      # Production keeps a destroyed vault recoverable for its retention.
+      purge_soft_delete_on_destroy = false
+    }
+  }
+}
+
+module "platform" {
+  source = "../../modules/platform"
+
+  name     = var.name
+  location = var.location
+  dns      = var.dns
+  cluster  = var.cluster
+  llm      = var.llm
+  models   = var.models
+  features = var.features
+  network  = var.network
+  ingress  = var.ingress
+  database = var.database
+  tags     = var.tags
+
+  operator_object_ids = var.operator_object_ids
+}
+
+# The cluster has no local accounts: Terraform reaches it with your Azure CLI
+# sign-in through kubelogin (Azure RBAC Cluster Admin, granted by the module).
+locals {
+  kube = {
+    host                   = module.platform.cluster.host
+    cluster_ca_certificate = base64decode(module.platform.cluster.cluster_ca_certificate)
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "kubelogin"
+      # 6dae42f8-… is the AKS AAD server application, the same in every tenant.
+      args = ["get-token", "--login", "azurecli", "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630"]
+    }
+  }
+}
+
+provider "kubernetes" {
+  host                   = local.kube.host
+  cluster_ca_certificate = local.kube.cluster_ca_certificate
+  exec {
+    api_version = local.kube.exec.api_version
+    command     = local.kube.exec.command
+    args        = local.kube.exec.args
+  }
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = local.kube.host
+    cluster_ca_certificate = local.kube.cluster_ca_certificate
+    exec                   = local.kube.exec
+  }
+  # The release chart is pulled from the vendor registry with the pull token.
+  # Provider configuration takes the ephemeral password, so it is never
+  # stored in state.
+  # Only when the password is given: `terraform destroy` needs no chart pull,
+  # so it runs without the pull token.
+  registries = startswith(try(var.release.chart, ""), "oci://") && try(var.release.source_username, null) != null && var.release_source_password != null ? [{
+    url      = "oci://${var.release.source_registry}"
+    username = var.release.source_username
+    password = var.release_source_password
+  }] : []
+}
+
+module "app" {
+  source = "../../modules/app"
+
+  platform    = module.platform
+  llm_api_key = module.platform.llm_api_key
+
+  release                 = var.release
+  release_source_password = var.release_source_password
+  oidc_client_secret      = var.oidc_client_secret
+  tls                     = var.tls
+  identity                = var.identity
+  model                   = var.model
+  features                = var.features
+
+  # The cluster-admin grant must exist before Terraform talks to the cluster.
+  depends_on = [module.platform]
+}

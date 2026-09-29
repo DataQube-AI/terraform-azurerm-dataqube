@@ -1,0 +1,60 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+name            = "acme"
+location        = "centralus" # needs Arm64 Dpsv6 VMs and PostgreSQL flexible server
+
+dns = {
+  zone_name = "dataqube.example.com"
+}
+
+cluster = {
+  system_node_count = 2
+  agent_pool        = { vm_size = "Standard_D8ps_v6", min_count = 1, max_count = 5 }
+}
+
+database = {
+  type                  = "azure_flexible"
+  sku_name              = "GP_Standard_D2ds_v5"
+  backup_retention_days = 35
+  high_availability     = true
+}
+
+release = {
+  version         = "0.2.1" # the release version DataQube gives you
+  chart           = "oci://dataqubereleases.azurecr.io/charts/dataqube"
+  chart_version   = "0.2.1" # the same version
+  source_registry = "dataqubereleases.azurecr.io"
+  source_username = "<pull token user name>"
+}
+
+tls = {
+  email = "platform-team@example.com"
+}
+
+# Sign-in through Microsoft Entra ID with app roles (see README.md).
+identity = {
+  type = "oidc"
+  oidc = {
+    issuer        = "https://login.microsoftonline.com/<tenant-id>/v2.0"
+    client_id     = "<application-client-id>"
+    audiences     = ["<application-client-id>", "api://<application-client-id>"]
+    groups_claim  = "roles"
+    scopes        = "openid email profile offline_access api://<application-client-id>/access"
+    provider_name = "Microsoft Entra ID"
+  }
+  organizations = [{
+    id            = "acme"
+    display_name  = "Acme"
+    role_mappings = { admin = ["DataQube.Admin"], analyst = ["DataQube.Analyst"], viewer = ["DataQube.Viewer"] }
+  }]
+  deployment_admin_groups = ["DataQube.DeploymentAdmin"]
+}
+# TF_VAR_oidc_client_secret: the application's client secret.
+
+# Every product feature is on. To leave one out, switch it off here; a
+# model-backed feature then needs no model deployment or quota.
+# features = {
+#   web_tools         = false   # agents search and fetch the public internet
+#   speech            = false   # transcribing uploaded audio
+#   image_generation  = false   # agents create and edit images
+#   memory_embeddings = false   # memory search by meaning
+# }

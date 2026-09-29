@@ -1,0 +1,13 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!examples/**/*.tfvars.example
+crash.log
+.terraform.tfstate.lock.info
+tfplan
+*.tfplan
+# Child modules do not pin providers; the root configuration does.
+modules/**/.terraform.lock.hcl
+# Scratch roots for test installs
+examples/.*/
