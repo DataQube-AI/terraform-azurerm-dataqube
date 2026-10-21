@@ -8,7 +8,7 @@ variable "name" {
 }
 
 variable "location" {
-  description = "Azure region. The cluster runs on Arm64 (Dpsv6) VMs, and the model deployment needs quota in this region."
+  description = "Azure region. The cluster's VMs (Dpsv6 for arm64, Dasv6 for amd64: cluster.architecture) and the model deployments need quota in this region."
   type        = string
 }
 
@@ -44,32 +44,28 @@ variable "cluster" {
   description = <<-EOT
     The AKS cluster. The system pool runs DataQube's services; an optional
     agent pool (autoscaled, tainted) runs the per-session agent pods.
-    Images are Arm64: VM sizes must be Arm (the Dpsv6 family, e.g. Standard_D4ps_v6).
+    architecture is "arm64" (the default) or "amd64". It sets the default VM
+    sizes: Standard_D4ps_v6 for the system pool and Standard_D8ps_v6 for the
+    agent pool on arm64 (the Dpsv6 family), Standard_D4as_v6 and
+    Standard_D8as_v6 on amd64 (Dasv6). A size you set must be of the same
+    architecture. amd64 needs a DataQube release with x86 images.
   EOT
   type = object({
+    architecture                    = optional(string, "arm64")
     kubernetes_version              = optional(string)
     sku_tier                        = optional(string, "Free")
-    system_vm_size                  = optional(string, "Standard_D4ps_v6")
+    system_vm_size                  = optional(string)
     system_node_count               = optional(number, 2)
     availability_zones              = optional(list(string), [])
     api_server_authorized_ip_ranges = optional(list(string), [])
     agent_pool = optional(object({
-      vm_size   = optional(string, "Standard_D8ps_v6")
+      vm_size   = optional(string)
       min_count = optional(number, 1)
       max_count = optional(number, 3)
     }))
   })
   default = {}
-  # Arm64 sizes carry "p" among the feature letters after the vCPU count:
-  # Standard_D4ps_v6, Standard_E8pds_v6, Standard_D4plds_v6.
-  validation {
-    condition     = can(regex("^Standard_[A-Za-z]+[0-9]+[a-z]*p[a-z]*_v[0-9]+$", var.cluster.system_vm_size))
-    error_message = "cluster.system_vm_size must be an Arm64 size, e.g. Standard_D4ps_v6."
-  }
-  validation {
-    condition     = var.cluster.agent_pool == null || can(regex("^Standard_[A-Za-z]+[0-9]+[a-z]*p[a-z]*_v[0-9]+$", var.cluster.agent_pool.vm_size))
-    error_message = "cluster.agent_pool.vm_size must be an Arm64 size, e.g. Standard_D8ps_v6."
-  }
+  # The architecture and the sizes are checked in ./vm_sizes.
 }
 
 variable "llm" {

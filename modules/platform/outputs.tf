@@ -4,11 +4,11 @@ output "resource_group_name" {
 }
 
 output "cluster" {
-  description = "How to reach the cluster's API (Entra ID authentication; no local accounts)."
+  description = "How to reach the cluster's API (Entra ID authentication; no local accounts). host and cluster_ca_certificate are known only once the operators' grants have reached the cluster."
   value = {
     name                   = azurerm_kubernetes_cluster.this.name
-    host                   = azurerm_kubernetes_cluster.this.kube_config[0].host
-    cluster_ca_certificate = azurerm_kubernetes_cluster.this.kube_config[0].cluster_ca_certificate
+    host                   = time_sleep.cluster_rbac.triggers.host
+    cluster_ca_certificate = time_sleep.cluster_rbac.triggers.cluster_ca_certificate
   }
 }
 
@@ -89,4 +89,9 @@ output "database" {
     password_secret_name = azurerm_key_vault_secret.database_admin[0].name
     password_version     = azurerm_key_vault_secret.database_admin[0].version
   } : null
+}
+
+output "vm_sizes" {
+  description = "The cluster's VM sizes: those cluster sets, else its architecture's defaults. agents is null without an agent pool."
+  value       = { system = module.vm_sizes.system, agents = module.vm_sizes.agents }
 }

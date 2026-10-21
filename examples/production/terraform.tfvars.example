@@ -1,6 +1,6 @@
 subscription_id = "00000000-0000-0000-0000-000000000000"
 name            = "acme"
-location        = "centralus" # needs Arm64 Dpsv6 VMs and PostgreSQL flexible server
+location        = "centralus" # needs Dpsv6 VMs (Dasv6 for amd64) and PostgreSQL flexible server
 
 dns = {
   zone_name = "dataqube.example.com"

@@ -178,6 +178,24 @@ variable "oidc_client_secret" {
   ephemeral   = true
 }
 
+variable "credential_master_keys_previous" {
+  description = "Only while rotating the credential master key: the earlier master keys, comma-separated hex, so values wrapped with them still open until `agent-orchestrator admin rewrap-secrets` re-wraps them under the current key. Written to the runtime Secret write-only (key credentialMasterKeysPrevious) and never stored in state; raise credential_master_keys_previous_revision each time it changes, including back to null."
+  type        = string
+  default     = null
+  sensitive   = true
+  ephemeral   = true
+}
+
+variable "credential_master_keys_previous_revision" {
+  description = "Raise by one whenever credential_master_keys_previous changes: the runtime Secret is rewritten from Key Vault and this input only then."
+  type        = number
+  default     = 0
+  validation {
+    condition     = var.credential_master_keys_previous_revision >= 0 && floor(var.credential_master_keys_previous_revision) == var.credential_master_keys_previous_revision
+    error_message = "credential_master_keys_previous_revision must be a whole number, 0 or more."
+  }
+}
+
 variable "model" {
   description = "How the agents use the model."
   type = object({

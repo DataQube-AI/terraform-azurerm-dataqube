@@ -1,4 +1,4 @@
-# DataQube quickstart: one resource group with everything in it — AKS (Arm64),
+# DataQube quickstart: one resource group with everything in it — AKS (Arm64 or x86),
 # a registry holding the release, Key Vault, Azure OpenAI, a DNS zone, the
 # bundled sign-in (Authentik), in-cluster PostgreSQL and Let's Encrypt
 # certificates. See README.md for the steps.

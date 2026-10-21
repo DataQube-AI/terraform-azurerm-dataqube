@@ -135,17 +135,25 @@ resource "kubernetes_secret_v1" "runtime" {
     name      = "${local.r}-runtime"
     namespace = kubernetes_namespace_v1.release.metadata[0].name
   }
-  data_wo = {
-    wsTicketSigningKey  = local.secret["ws-ticket-signing-key"]
-    oidcClientSecret    = local.secret["oidc-client-secret"]
-    nextauthSecret      = local.secret["nextauth-secret"]
-    databaseUrl         = local.database_url
-    evidenceSigningKey  = local.secret["evidence-signing-key"]
-    credentialMasterKey = local.secret["credential-master-key"]
-  }
-  # 2: adds evidenceSigningKey and credentialMasterKey. The Secret is
-  # rewritten once from Key Vault, so the existing values stay the same.
-  data_wo_revision = 2
+  data_wo = merge(
+    {
+      wsTicketSigningKey  = local.secret["ws-ticket-signing-key"]
+      oidcClientSecret    = local.secret["oidc-client-secret"]
+      nextauthSecret      = local.secret["nextauth-secret"]
+      databaseUrl         = local.database_url
+      evidenceSigningKey  = local.secret["evidence-signing-key"]
+      credentialMasterKey = local.secret["credential-master-key"]
+    },
+    # Only while rotating the master key: earlier keys still open values
+    # wrapped with them until they are re-wrapped under the current one.
+    var.credential_master_keys_previous == null ? {} : {
+      credentialMasterKeysPrevious = var.credential_master_keys_previous
+    },
+  )
+  # 2: adds evidenceSigningKey and credentialMasterKey. Each raise of
+  # credential_master_keys_previous_revision rewrites it again. The Secret is
+  # rewritten from Key Vault, so the existing values stay the same.
+  data_wo_revision = 2 + var.credential_master_keys_previous_revision
 }
 
 # The bundled application database (only when it runs in the cluster).

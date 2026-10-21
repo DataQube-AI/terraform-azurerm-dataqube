@@ -1,6 +1,6 @@
 # Quickstart
 
-Everything in one resource group: AKS on Arm64, the release imported into
+Everything in one resource group: AKS on Arm64 or x86 (`cluster.architecture`), the release imported into
 your registry, Azure OpenAI, a DNS zone, sign-in through the bundled identity
 provider (Authentik), in-cluster PostgreSQL and Let's Encrypt certificates.
 
@@ -100,7 +100,7 @@ No resources.
 | <a name="input_features"></a> [features](#input\_features) | See modules/platform: product features that can be left out (web\_tools, speech, image\_generation, memory\_embeddings); all on by default. | `any` | `{}` | no |
 | <a name="input_identity"></a> [identity](#input\_identity) | Bootstrap administrator email and first organization. | `any` | n/a | yes |
 | <a name="input_llm"></a> [llm](#input\_llm) | See modules/platform. | `any` | `{}` | no |
-| <a name="input_location"></a> [location](#input\_location) | Azure region with Arm64 (Dpsv6) VMs and model quota. | `string` | n/a | yes |
+| <a name="input_location"></a> [location](#input\_location) | Azure region with quota for the cluster's VMs (Dpsv6 for arm64, Dasv6 for amd64) and the models. | `string` | n/a | yes |
 | <a name="input_model"></a> [model](#input\_model) | Reasoning effort and context window. | `any` | `{}` | no |
 | <a name="input_models"></a> [models](#input\_models) | See modules/platform: the embeddings, speech and image model deployments. | `any` | `{}` | no |
 | <a name="input_name"></a> [name](#input\_name) | Short installation name (2-12 lowercase letters/digits). | `string` | n/a | yes |

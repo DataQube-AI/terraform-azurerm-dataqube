@@ -9,7 +9,7 @@ variable "name" {
 }
 
 variable "location" {
-  description = "Azure region with Arm64 (Dpsv6) VMs and model quota."
+  description = "Azure region with quota for the cluster's VMs (Dpsv6 for arm64, Dasv6 for amd64) and the models."
   type        = string
 }
 

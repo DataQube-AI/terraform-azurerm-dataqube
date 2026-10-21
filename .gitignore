@@ -11,3 +11,6 @@ tfplan
 modules/**/.terraform.lock.hcl
 # Scratch roots for test installs
 examples/.*/
+
+# Vesta builds the package here (vesta-copy.conf).
+/build/

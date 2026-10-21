@@ -1,3 +1,12 @@
+# The cluster's VM sizes: those cluster sets, else its architecture's defaults; checked there.
+module "vm_sizes" {
+  source         = "./vm_sizes"
+  architecture   = var.cluster.architecture
+  system_vm_size = var.cluster.system_vm_size
+  agent_pool     = var.cluster.agent_pool != null
+  agent_vm_size  = try(var.cluster.agent_pool.vm_size, null)
+}
+
 resource "azurerm_kubernetes_cluster" "this" {
   name                = "aks-${local.base}"
   location            = azurerm_resource_group.this.location
@@ -41,7 +50,7 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   default_node_pool {
     name                         = "system"
-    vm_size                      = var.cluster.system_vm_size
+    vm_size                      = module.vm_sizes.system
     node_count                   = var.cluster.system_node_count
     zones                        = var.cluster.availability_zones
     os_disk_size_gb              = 64
@@ -65,7 +74,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "agents" {
   count                 = var.cluster.agent_pool == null ? 0 : 1
   name                  = "agents"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.this.id
-  vm_size               = var.cluster.agent_pool.vm_size
+  vm_size               = module.vm_sizes.agents
   auto_scaling_enabled  = true
   min_count             = var.cluster.agent_pool.min_count
   max_count             = var.cluster.agent_pool.max_count
@@ -88,4 +97,17 @@ resource "azurerm_role_assignment" "cluster_admin" {
   scope                = azurerm_kubernetes_cluster.this.id
   role_definition_name = "Azure Kubernetes Service RBAC Cluster Admin"
   principal_id         = each.value
+}
+
+# Azure RBAC grants take a while to reach the cluster's API, as they do Key
+# Vault's: installing the release the moment the grant exists is refused
+# (403). The cluster output's host and certificate come through this, so the
+# Kubernetes and Helm providers reach the cluster only after it.
+resource "time_sleep" "cluster_rbac" {
+  depends_on      = [azurerm_role_assignment.cluster_admin]
+  create_duration = "90s"
+  triggers = {
+    host                   = azurerm_kubernetes_cluster.this.kube_config[0].host
+    cluster_ca_certificate = azurerm_kubernetes_cluster.this.kube_config[0].cluster_ca_certificate
+  }
 }

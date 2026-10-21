@@ -4,7 +4,7 @@ Terraform for installing DataQube on your own Azure subscription.
 
 | Path | What it is |
 |---|---|
-| [`modules/platform`](modules/platform) | Azure: AKS (Arm64), registry, Key Vault, Azure OpenAI, DNS, identities |
+| [`modules/platform`](modules/platform) | Azure: AKS (Arm64 or x86), registry, Key Vault, Azure OpenAI, DNS, identities |
 | [`modules/app`](modules/app) | In the cluster: the release's images, Envoy Gateway, cert-manager, credentials, the DataQube release |
 | [`examples/quickstart`](examples/quickstart) | One resource group with everything, bundled sign-in, in-cluster PostgreSQL, Let's Encrypt — start here |
 | [`examples/production`](examples/production) | Your own identity provider (Entra ID …), Azure Database for PostgreSQL, and optionally private endpoints, an internal load balancer, a private cluster API and your own certificate |
@@ -21,8 +21,9 @@ path, so a copy elsewhere must change those `source` paths.
 - Terraform ≥ 1.11 (write-only arguments and ephemeral resources).
 - Azure CLI, signed in (`az login`) as an identity with **Owner** on the
   subscription (the module creates role assignments), and `kubelogin`.
-- Regional quota for **Arm64 VMs (Dpsv6 family)** — DataQube's images are
-  `linux/arm64`.
+- Regional quota for the cluster's VMs: **Arm64 (Dpsv6 family)** by default,
+  or **x86 (Dasv6 family)** with `cluster = { architecture = "amd64" }`. x86
+  needs a DataQube release with x86 images.
 - Azure OpenAI availability and quota in your region for the four model
   deployments the product uses, all on one account (choose others with the
   `llm` and `models` inputs; a feature switched off with `features` needs
