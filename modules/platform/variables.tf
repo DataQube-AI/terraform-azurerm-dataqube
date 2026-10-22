@@ -8,7 +8,7 @@ variable "name" {
 }
 
 variable "location" {
-  description = "Azure region. The cluster's VMs (Dpsv6 for arm64, Dasv6 for amd64: cluster.architecture) and the model deployments need quota in this region."
+  description = "Azure region. The cluster's VMs (Dpsv6 for arm64, Dasv6 for amd64: cluster.architecture; quota families Dpsv6 and Dav6) and the model deployments need quota in this region."
   type        = string
 }
 
@@ -47,8 +47,9 @@ variable "cluster" {
     architecture is "arm64" (the default) or "amd64". It sets the default VM
     sizes: Standard_D4ps_v6 for the system pool and Standard_D8ps_v6 for the
     agent pool on arm64 (the Dpsv6 family), Standard_D4as_v6 and
-    Standard_D8as_v6 on amd64 (Dasv6). A size you set must be of the same
-    architecture. amd64 needs a DataQube release with x86 images.
+    Standard_D8as_v6 on amd64 (Dasv6, whose quota family is Dav6). A size you
+    set must be of the same architecture. amd64 needs DataQube 0.3.0 or later,
+    the first release with x86 images.
   EOT
   type = object({
     architecture                    = optional(string, "arm64")
@@ -99,7 +100,7 @@ variable "models" {
     embeddings = optional(object({
       model    = optional(string, "text-embedding-3-small")
       version  = optional(string, "1")
-      sku      = optional(string, "Standard")
+      sku      = optional(string, "DataZoneStandard")
       capacity = optional(number, 50)
     }), {})
     speech = optional(object({

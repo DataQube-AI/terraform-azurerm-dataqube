@@ -48,7 +48,7 @@ variable "features" {
 variable "release" {
   description = <<-EOT
     Which DataQube release to run and where to get it.
-    version         the release version, e.g. "0.2.1" (every image
+    version         the release version, e.g. "0.3.0" (every image
                     is published under it)
     chart           the dataqube chart: a local path or an oci:// reference
     chart_version   chart version (for an oci:// chart)

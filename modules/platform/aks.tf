@@ -102,7 +102,9 @@ resource "azurerm_role_assignment" "cluster_admin" {
 # Azure RBAC grants take a while to reach the cluster's API, as they do Key
 # Vault's: installing the release the moment the grant exists is refused
 # (403). The cluster output's host and certificate come through this, so the
-# Kubernetes and Helm providers reach the cluster only after it.
+# Kubernetes and Helm providers reach the cluster only after it. 90 seconds
+# isn't always enough (Azure says up to 10 minutes), so the examples then wait
+# until the cluster accepts their own sign-in (wait-for-cluster-access.sh).
 resource "time_sleep" "cluster_rbac" {
   depends_on      = [azurerm_role_assignment.cluster_admin]
   create_duration = "90s"

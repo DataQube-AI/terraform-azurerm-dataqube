@@ -78,7 +78,9 @@ The client secret is needed again only to rotate it: raise
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_time"></a> [time](#provider\_time) | ~> 0.13 |
 
 ## Modules
 
@@ -89,7 +91,9 @@ No providers.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [time_sleep.cluster_access](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) | resource |
 
 ## Inputs
 
@@ -102,7 +106,7 @@ No resources.
 | <a name="input_identity"></a> [identity](#input\_identity) | See modules/app: type = "oidc" with oidc, organizations and deployment\_admin\_groups (or "bundled"). | `any` | n/a | yes |
 | <a name="input_ingress"></a> [ingress](#input\_ingress) | See modules/platform: internal = true with private\_ip for an internal load balancer. | `any` | `{}` | no |
 | <a name="input_llm"></a> [llm](#input\_llm) | See modules/platform. | `any` | `{}` | no |
-| <a name="input_location"></a> [location](#input\_location) | Azure region with quota for the cluster's VMs (Dpsv6 for arm64, Dasv6 for amd64) and the models. | `string` | n/a | yes |
+| <a name="input_location"></a> [location](#input\_location) | Azure region with quota for the cluster's VMs (Dpsv6 sizes for arm64, Dasv6 for amd64; quota families StandardDpsv6Family and standardDav6Family) and the models. | `string` | n/a | yes |
 | <a name="input_model"></a> [model](#input\_model) | Reasoning effort and context window. | `any` | `{}` | no |
 | <a name="input_models"></a> [models](#input\_models) | See modules/platform: the embeddings, speech and image model deployments. | `any` | `{}` | no |
 | <a name="input_name"></a> [name](#input\_name) | Short installation name (2-12 lowercase letters/digits). | `string` | n/a | yes |

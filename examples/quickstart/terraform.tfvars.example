@@ -7,9 +7,9 @@ dns = {
 }
 
 release = {
-  version         = "0.2.1" # the release version DataQube gives you
+  version         = "0.3.1" # the release version DataQube gives you
   chart           = "oci://dataqubereleases.azurecr.io/charts/dataqube"
-  chart_version   = "0.2.1" # the same version
+  chart_version   = "0.3.1" # the same version
   source_registry = "dataqubereleases.azurecr.io"
   source_username = "<pull token user name>"
 }

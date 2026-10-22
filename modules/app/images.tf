@@ -29,9 +29,11 @@ resource "terraform_data" "image" {
       # (macOS) as well as bash 4+.
       auth=()
       if [[ -n "$${SOURCE_USERNAME:-}" ]]; then
-        auth=(--username "$SOURCE_USERNAME" --password "$SOURCE_PASSWORD")
+        # The Azure CLI reads an argument given as @- from its standard input:
+        # the password never appears on a command line.
+        auth=(--username "$SOURCE_USERNAME" --password @-)
       fi
-      az acr import --name "$TARGET_REGISTRY" --force \
+      printf '%s' "$${SOURCE_PASSWORD:-}" | az acr import --name "$TARGET_REGISTRY" --force \
         --source "$SOURCE_REGISTRY/$IMAGE" --image "$IMAGE" $${auth[@]+"$${auth[@]}"}
     EOT
     environment = {

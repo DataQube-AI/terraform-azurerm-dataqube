@@ -21,9 +21,12 @@ path, so a copy elsewhere must change those `source` paths.
 - Terraform ≥ 1.11 (write-only arguments and ephemeral resources).
 - Azure CLI, signed in (`az login`) as an identity with **Owner** on the
   subscription (the module creates role assignments), and `kubelogin`.
-- Regional quota for the cluster's VMs: **Arm64 (Dpsv6 family)** by default,
-  or **x86 (Dasv6 family)** with `cluster = { architecture = "amd64" }`. x86
-  needs a DataQube release with x86 images.
+- `curl` and `jq`: the examples use them to wait until the new cluster
+  accepts that sign-in.
+- Regional quota for the cluster's VMs: **Arm64 Dpsv6** sizes by default (quota
+  family `StandardDpsv6Family`), or **x86 Dasv6** sizes with
+  `cluster = { architecture = "amd64" }` (quota family `standardDav6Family`).
+  x86 needs DataQube 0.3.0 or later, the first release with x86 images.
 - Azure OpenAI availability and quota in your region for the four model
   deployments the product uses, all on one account (choose others with the
   `llm` and `models` inputs; a feature switched off with `features` needs
@@ -32,7 +35,7 @@ path, so a copy elsewhere must change those `source` paths.
   | Use | Default model | SKU | Capacity |
   |---|---|---|---|
   | Chat (the agents) | `gpt-6-sol` | DataZoneStandard | 100 |
-  | Memory search | `text-embedding-3-small` | Standard | 50 |
+  | Memory search | `text-embedding-3-small` | DataZoneStandard | 50 |
   | Transcribing uploaded audio | `whisper` | Standard | 1 |
   | Image generation | `gpt-image-2.5-sunburst` | GlobalStandard | 5 |
 - A DNS name you can delegate (e.g. `dataqube.example.com`), for HTTPS. The
