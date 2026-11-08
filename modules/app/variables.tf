@@ -6,6 +6,7 @@ variable "platform" {
     agent_pool_enabled = bool
     llm                = object({ endpoint = string, base_url = string, deployment = string, model = string, embeddings_deployment = string, speech_deployment = string, image_deployment = string })
     ingress = object({
+      controller          = optional(string, "envoy")
       internal            = bool
       ip_address          = string
       ip_name             = string
@@ -43,6 +44,17 @@ variable "features" {
     memory_embeddings = optional(bool, true)
   })
   default = {}
+}
+
+variable "agent_token_verification" {
+  description = "How the orchestrator verifies agent pods' tokens. `tokenReview` asks Kubernetes, and needs a cluster-wide permission that this module grants. `signingKeys` needs no cluster-wide permission and relies on Kubernetes' default read access to the API server's published signing keys, and on the node's clock."
+  type        = string
+  default     = "tokenReview"
+
+  validation {
+    condition     = contains(["signingKeys", "tokenReview"], var.agent_token_verification)
+    error_message = "agent_token_verification must be signingKeys or tokenReview."
+  }
 }
 
 variable "release" {

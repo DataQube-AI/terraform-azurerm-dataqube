@@ -1,6 +1,8 @@
 # Cluster-wide controllers the release needs. Installed once per cluster.
 
+# The Envoy Gateway serves the release unless an Application Gateway does.
 resource "helm_release" "envoy_gateway" {
+  count            = var.platform.ingress.controller == "envoy" ? 1 : 0
   name             = "eg"
   repository       = "oci://docker.io/envoyproxy"
   chart            = "gateway-helm"
@@ -9,6 +11,12 @@ resource "helm_release" "envoy_gateway" {
   create_namespace = true
   wait             = true
   timeout          = 600
+}
+
+# Installations from before the Application Gateway option keep their Envoy.
+moved {
+  from = helm_release.envoy_gateway
+  to   = helm_release.envoy_gateway[0]
 }
 
 # cert-manager authenticates to Azure DNS as the platform's cert-manager

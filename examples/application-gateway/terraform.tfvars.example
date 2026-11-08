@@ -1,0 +1,39 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+name            = "acme"
+location        = "eastus2"
+
+dns = {
+  zone_name = "dataqube.example.com" # delegate it: see the name_servers output
+}
+
+release = {
+  version         = "0.3.2" # the release version DataQube gives you
+  chart           = "oci://dataqubereleases.azurecr.io/charts/dataqube"
+  chart_version   = "0.3.2" # the same version
+  source_registry = "dataqubereleases.azurecr.io"
+  source_username = "<pull token user name>"
+}
+# The pull token's password: read it into TF_VAR_release_source_password in
+# the shell (see the quickstart), never into this file.
+
+tls = {
+  email = "platform-team@example.com"
+}
+
+identity = {
+  admin_email  = "platform-team@example.com"
+  organization = { id = "acme", display_name = "Acme" }
+}
+
+# The gateway's own subnet, in the installation's network (10.60.0.0/16 by
+# default): /24 or smaller, and nothing else in it.
+# application_gateway = { subnet = "10.60.18.0/24", max_capacity = 2 }
+
+# Every product feature is on. To leave one out, switch it off here; a
+# model-backed feature then needs no model deployment or quota.
+# features = {
+#   web_tools         = false   # agents search and fetch the public internet
+#   speech            = false   # transcribing uploaded audio
+#   image_generation  = false   # agents create and edit images
+#   memory_embeddings = false   # memory search by meaning
+# }

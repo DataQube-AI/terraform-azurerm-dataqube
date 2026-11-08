@@ -58,6 +58,7 @@ output "llm_api_key" {
 output "ingress" {
   description = "The public address and names the gateway serves."
   value = {
+    controller          = var.ingress.controller
     internal            = local.internal_ingress
     ip_address          = local.ingress_ip
     ip_name             = one(azurerm_public_ip.ingress[*].name)

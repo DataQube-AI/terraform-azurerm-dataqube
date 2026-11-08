@@ -298,3 +298,146 @@ run "bundled_postgres_tag_can_be_overridden" {
     error_message = "postgres_tag overrides the release version"
   }
 }
+
+run "envoy_is_the_default_entry_point" {
+  command = plan
+  assert {
+    condition     = can(yamldecode(output.documents[0])["dataqube-infra"].gateway.envoyProxy) && yamldecode(output.documents[0])["dataqube-core"].gateway.hostname == "app.acme.example"
+    error_message = "without a controller, the release is served by the Envoy Gateway"
+  }
+  assert {
+    condition     = !can(yamldecode(output.documents[0])["dataqube-core"].ingress) && !can(yamldecode(output.documents[1])["dataqube-infra"].authentik.server)
+    error_message = "the Envoy Gateway needs no Ingress objects"
+  }
+}
+
+run "application_gateway_serves_through_ingress_objects" {
+  command = plan
+  variables {
+    platform = {
+      registry           = { id = "acr-id", name = "acrtest", login_server = "acrtest.azurecr.io" }
+      key_vault          = { id = "kv-id", name = "kv", ready_after = "ready" }
+      agent_pool_enabled = true
+      llm                = { endpoint = "https://oai.example/", base_url = "https://oai.example/openai/v1", deployment = "gpt-6-sol", model = "gpt-6-sol", embeddings_deployment = "text-embedding-3-small", speech_deployment = "whisper", image_deployment = "gpt-image-2-5-sunburst" }
+      ingress = {
+        controller = "application_gateway"
+        internal   = false, ip_address = "20.0.0.2", ip_name = null, ip_resource_group = "mc-rg"
+        app_fqdn   = "app.acme.example", auth_fqdn = "auth.acme.example"
+        zone_name  = "acme.example", zone_resource_group = "rg", subscription_id = "sub"
+      }
+      cert_manager_identity_client_id = "cm-client"
+      database                        = null
+    }
+  }
+  assert {
+    condition     = yamldecode(output.documents[0])["dataqube-infra"].gateway == { enabled = false } && yamldecode(output.documents[0])["dataqube-core"].gateway == { enabled = false }
+    error_message = "no Envoy Gateway runs, and the release renders no Gateway objects"
+  }
+  assert {
+    condition = (yamldecode(output.documents[0])["dataqube-core"].ingress.enabled
+      && yamldecode(output.documents[0])["dataqube-core"].ingress.className == "azure-application-gateway"
+      && yamldecode(output.documents[0])["dataqube-core"].ingress.host == "app.acme.example"
+    && yamldecode(output.documents[0])["dataqube-core"].ingress.tls == { enabled = true, secretName = "dataqube-tls" })
+    error_message = "the release's two Ingress objects are for AGIC, on the app host, with the release's certificate"
+  }
+  assert {
+    condition     = yamldecode(output.documents[0])["dataqube-core"].ingress.annotations == { "appgw.ingress.kubernetes.io/ssl-redirect" = "true" }
+    error_message = "plain HTTP is redirected to HTTPS"
+  }
+  assert {
+    condition = (yamldecode(output.documents[0])["dataqube-core"].ingress.api.annotations["appgw.ingress.kubernetes.io/request-timeout"] == "3600"
+    && yamldecode(output.documents[0])["dataqube-core"].ingress.web.annotations["appgw.ingress.kubernetes.io/request-timeout"] == "3600")
+    error_message = "the gateway lets sessions and uploads run for an hour"
+  }
+  assert {
+    condition = (yamldecode(output.documents[0])["dataqube-core"].ingress.api.annotations["appgw.ingress.kubernetes.io/health-probe-path"] == "/api/orchestrator/health"
+    && yamldecode(output.documents[0])["dataqube-core"].ingress.web.annotations["appgw.ingress.kubernetes.io/health-probe-path"] == "/api/health")
+    error_message = "the gateway probes liveness paths, not readiness (which checks the database)"
+  }
+  assert {
+    condition = (yamldecode(output.documents[1])["dataqube-infra"].authentik.server.ingress.enabled
+      && yamldecode(output.documents[1])["dataqube-infra"].authentik.server.ingress.ingressClassName == "azure-application-gateway"
+      && yamldecode(output.documents[1])["dataqube-infra"].authentik.server.ingress.hosts == ["auth.acme.example"]
+    && yamldecode(output.documents[1])["dataqube-infra"].authentik.server.ingress.tls == [{ secretName = "dataqube-tls", hosts = ["auth.acme.example"] }])
+    error_message = "the bundled Authentik gets its own Ingress, on the auth host, with the release's certificate"
+  }
+  assert {
+    condition     = yamldecode(output.documents[1])["dataqube-infra"].authentik.server.ingress.annotations["appgw.ingress.kubernetes.io/health-probe-path"] == "/-/health/live/"
+    error_message = "the gateway probes Authentik's liveness, not its readiness (which checks its database)"
+  }
+  assert {
+    condition     = yamldecode(output.documents[1])["dataqube-infra"].authentik.authentik.existingSecret.secretName == "dataqube-authentik-runtime"
+    error_message = "the rest of Authentik's values are unchanged"
+  }
+  assert {
+    condition     = contains(yamldecode(output.documents[0])["dataqube-infra"].certManager.certificate.dnsNames, "auth.acme.example")
+    error_message = "the certificate still covers the auth host"
+  }
+}
+
+run "application_gateway_with_your_identity_provider_needs_no_authentik_ingress" {
+  command = plan
+  variables {
+    platform = {
+      registry           = { id = "acr-id", name = "acrtest", login_server = "acrtest.azurecr.io" }
+      key_vault          = { id = "kv-id", name = "kv", ready_after = "ready" }
+      agent_pool_enabled = true
+      llm                = { endpoint = "https://oai.example/", base_url = "https://oai.example/openai/v1", deployment = "gpt-6-sol", model = "gpt-6-sol", embeddings_deployment = "text-embedding-3-small", speech_deployment = "whisper", image_deployment = "gpt-image-2-5-sunburst" }
+      ingress = {
+        controller = "application_gateway"
+        internal   = false, ip_address = "20.0.0.2", ip_name = null, ip_resource_group = "mc-rg"
+        app_fqdn   = "app.acme.example", auth_fqdn = "auth.acme.example"
+        zone_name  = "acme.example", zone_resource_group = "rg", subscription_id = "sub"
+      }
+      cert_manager_identity_client_id = "cm-client"
+      database                        = null
+    }
+    identity = {
+      type = "oidc"
+      oidc = {
+        issuer       = "https://login.microsoftonline.com/tenant/v2.0"
+        client_id    = "client-id"
+        audiences    = ["client-id", "api://client-id"]
+        groups_claim = "roles"
+      }
+      organizations           = [{ id = "acme", display_name = "Acme", role_mappings = { admin = ["DataQube.Admin"] } }]
+      deployment_admin_groups = ["DataQube.DeploymentAdmin"]
+    }
+    secret_names = { runtime = "dataqube-runtime", llm = "dataqube-llm", app_postgresql = "dataqube-app-postgresql" }
+  }
+  assert {
+    condition     = yamldecode(output.documents[1])["dataqube-infra"].authentik == { enabled = false }
+    error_message = "with your own identity provider, no Authentik runs, so it has no Ingress"
+  }
+  assert {
+    condition     = yamldecode(output.documents[0])["dataqube-core"].ingress.host == "app.acme.example"
+    error_message = "DataQube itself is still served through the Ingress objects"
+  }
+}
+
+run "agent_tokens_use_token_review_by_default" {
+  command = plan
+  assert {
+    condition     = yamldecode(output.documents[0])["dataqube-core"].agentCore.tokenVerification == "tokenReview"
+    error_message = "the default matches the chart's, and what Qualify runs"
+  }
+}
+
+run "agent_tokens_can_use_signing_keys" {
+  command = plan
+  variables {
+    agent_token_verification = "signingKeys"
+  }
+  assert {
+    condition     = yamldecode(output.documents[0])["dataqube-core"].agentCore.tokenVerification == "signingKeys"
+    error_message = "the chosen method reaches the chart"
+  }
+}
+
+run "an_unknown_agent_token_verification_is_refused" {
+  command = plan
+  variables {
+    agent_token_verification = "none"
+  }
+  expect_failures = [var.agent_token_verification]
+}

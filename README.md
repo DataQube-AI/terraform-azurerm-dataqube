@@ -5,9 +5,10 @@ Terraform for installing DataQube on your own Azure subscription.
 | Path | What it is |
 |---|---|
 | [`modules/platform`](modules/platform) | Azure: AKS (Arm64 or x86), registry, Key Vault, Azure OpenAI, DNS, identities |
-| [`modules/app`](modules/app) | In the cluster: the release's images, Envoy Gateway, cert-manager, credentials, the DataQube release |
+| [`modules/app`](modules/app) | In the cluster: the release's images, Envoy Gateway (unless an Application Gateway fronts it), cert-manager, credentials, the DataQube release |
 | [`examples/quickstart`](examples/quickstart) | One resource group with everything, bundled sign-in, in-cluster PostgreSQL, Let's Encrypt — start here |
 | [`examples/production`](examples/production) | Your own identity provider (Entra ID …), Azure Database for PostgreSQL, and optionally private endpoints, an internal load balancer, a private cluster API and your own certificate |
+| [`examples/application-gateway`](examples/application-gateway) | The quickstart behind Azure Application Gateway v2 (programmed by AGIC) instead of the Envoy Gateway, as a platform team's gateway would front it |
 
 The two modules are separate because Terraform's Kubernetes providers can only
 be configured from a cluster that already exists: a root configuration (the

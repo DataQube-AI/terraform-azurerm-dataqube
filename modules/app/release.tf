@@ -12,6 +12,9 @@ module "values" {
   model        = var.model
   features     = var.features
   release_name = var.release_name
+
+  agent_token_verification = var.agent_token_verification
+
   secret_names = {
     runtime              = kubernetes_secret_v1.runtime.metadata[0].name
     llm                  = kubernetes_secret_v1.llm.metadata[0].name

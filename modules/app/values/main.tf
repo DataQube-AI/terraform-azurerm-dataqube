@@ -49,17 +49,12 @@ locals {
     tolerations  = var.platform.agent_pool_enabled ? [{ key = "dataqube.dev/pool", operator = "Equal", value = "agents", effect = "NoSchedule" }] : []
   }
 
-  values = {
-    "dataqube-infra" = {
-      # Off when the platform provides a managed database; the other keys
-      # are then unused.
-      postgresql = {
-        enabled = !local.managed_database
-        image   = { repository = "${var.platform.registry.login_server}/dataqube/postgres", tag = coalesce(var.release.postgres_tag, var.release.version) }
-        auth    = { existingSecret = var.secret_names.app_postgresql }
-        storage = { storageClassName = "managed-csi" }
-      }
-      gateway = {
+  # How users reach the release: the Envoy Gateway the chart deploys, or an
+  # Application Gateway that AGIC programs from the chart's Ingress objects.
+  # The shapes differ, so they are picked by key, as features are.
+  entries = {
+    envoy = {
+      infra_gateway = {
         envoyProxy = {
           enabled        = true
           loadBalancerIP = var.platform.ingress.ip_address
@@ -76,6 +71,64 @@ locals {
         tls       = { enabled = true, secretName = local.tls }
         hostnames = { app = local.app, authentik = local.auth }
       }
+      core      = { gateway = { hostname = local.app, tls = { enabled = true, secretName = local.tls } } }
+      authentik = {}
+    }
+    application_gateway = {
+      infra_gateway = { enabled = false }
+      core = {
+        gateway = { enabled = false }
+        ingress = {
+          enabled     = true
+          className   = local.ingress_class
+          host        = local.app
+          tls         = { enabled = true, secretName = local.tls }
+          annotations = { "appgw.ingress.kubernetes.io/ssl-redirect" = "true" }
+          # Sessions stream for up to an hour, and uploads are large. AGIC
+          # would otherwise probe the readiness path, which also checks the
+          # database.
+          api = { annotations = {
+            "appgw.ingress.kubernetes.io/request-timeout"   = "3600"
+            "appgw.ingress.kubernetes.io/health-probe-path" = "/api/orchestrator/health"
+          } }
+          web = { annotations = {
+            "appgw.ingress.kubernetes.io/request-timeout"   = "3600"
+            "appgw.ingress.kubernetes.io/health-probe-path" = "/api/health"
+          } }
+        }
+      }
+      # The bundled Authentik's own Ingress (the upstream chart renders it),
+      # on the auth host, under the same certificate.
+      authentik = {
+        server = {
+          ingress = {
+            enabled          = true
+            ingressClassName = local.ingress_class
+            hosts            = [local.auth]
+            tls              = [{ secretName = local.tls, hosts = [local.auth] }]
+            annotations = {
+              "appgw.ingress.kubernetes.io/ssl-redirect"      = "true"
+              "appgw.ingress.kubernetes.io/health-probe-path" = "/-/health/live/"
+            }
+          }
+        }
+      }
+    }
+  }
+  ingress_class = "azure-application-gateway"
+  entry         = local.entries[var.platform.ingress.controller]
+
+  values = {
+    "dataqube-infra" = {
+      # Off when the platform provides a managed database; the other keys
+      # are then unused.
+      postgresql = {
+        enabled = !local.managed_database
+        image   = { repository = "${var.platform.registry.login_server}/dataqube/postgres", tag = coalesce(var.release.postgres_tag, var.release.version) }
+        auth    = { existingSecret = var.secret_names.app_postgresql }
+        storage = { storageClassName = "managed-csi" }
+      }
+      gateway = local.entry.infra_gateway
       # Let's Encrypt only; your own certificate arrives as the TLS secret.
       certManager = {
         enabled = var.tls.type == "letsencrypt"
@@ -97,7 +150,7 @@ locals {
         }
       }
     }
-    "dataqube-core" = {
+    "dataqube-core" = merge({
       imageRegistry = var.platform.registry.login_server
       secrets       = { existingSecret = var.secret_names.runtime }
       orchestrator = {
@@ -110,8 +163,9 @@ locals {
       }
       web = { image = { tag = var.release.version }, nextauthUrl = "https://${local.app}" }
       agentCore = merge({
-        image  = { tag = var.release.version }
-        kernel = { image = { tag = var.release.version }, web = { enabled = var.features.web_tools } }
+        tokenVerification = var.agent_token_verification
+        image             = { tag = var.release.version }
+        kernel            = { image = { tag = var.release.version }, web = { enabled = var.features.web_tools } }
         llm = merge({
           provider        = "azure_openai"
           model           = var.platform.llm.model
@@ -128,8 +182,7 @@ locals {
         }, var.model.context_window_tokens == null ? {} : { contextWindowTokens = tostring(var.model.context_window_tokens) })
         imageGeneration = local.feature_values.image_generation[local.switch.image_generation]
       }, local.agent_scheduling)
-      gateway = { hostname = local.app, tls = { enabled = true, secretName = local.tls } }
-    }
+    }, local.entry.core)
   }
 }
 
@@ -144,7 +197,7 @@ locals {
         redirectUris    = ["https://${local.app}/api/auth/callback/oidc"]
       }
       authentikBootstrap = { enabled = false }
-      authentik = {
+      authentik = merge({
         authentik = { existingSecret = { secretName = var.secret_names.authentik_runtime } }
         global    = { env = [] }
         postgresql = {
@@ -153,7 +206,7 @@ locals {
             secretKeys     = { adminPasswordKey = "postgres-password", userPasswordKey = "password" }
           }
         }
-      }
+      }, local.entry.authentik)
     }
     "dataqube-core" = {
       oidc = {

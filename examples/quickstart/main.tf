@@ -110,12 +110,13 @@ module "app" {
   platform    = module.platform
   llm_api_key = module.platform.llm_api_key
 
-  release                 = var.release
-  release_source_password = var.release_source_password
-  tls                     = var.tls
-  identity                = var.identity
-  model                   = var.model
-  features                = var.features
+  release                  = var.release
+  release_source_password  = var.release_source_password
+  tls                      = var.tls
+  identity                 = var.identity
+  model                    = var.model
+  features                 = var.features
+  agent_token_verification = var.agent_token_verification
 
   # The cluster-admin grant must exist before Terraform talks to the cluster.
   depends_on = [module.platform]

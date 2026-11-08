@@ -6,6 +6,7 @@ variable "platform" {
     agent_pool_enabled = bool
     llm                = object({ endpoint = string, base_url = string, deployment = string, model = string, embeddings_deployment = string, speech_deployment = string, image_deployment = string })
     ingress = object({
+      controller          = optional(string, "envoy")
       internal            = bool
       ip_address          = string
       ip_name             = string
@@ -26,6 +27,17 @@ variable "platform" {
       password_version     = string
     })
   })
+}
+
+variable "agent_token_verification" {
+  description = "How the orchestrator verifies agent pods' tokens (modules/app agent_token_verification)."
+  type        = string
+  default     = "tokenReview"
+
+  validation {
+    condition     = contains(["signingKeys", "tokenReview"], var.agent_token_verification)
+    error_message = "agent_token_verification must be signingKeys or tokenReview."
+  }
 }
 
 variable "features" {

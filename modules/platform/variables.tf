@@ -73,14 +73,16 @@ variable "llm" {
   description = <<-EOT
     The language model DataQube's agents use. type = "create" creates an
     Azure OpenAI account and its chat deployment in this resource group
-    (the other models are the models input).
+    (the other models are the models input). capacity is in thousands of
+    tokens a minute: 300 lets a workflow's subagents run side by side, where
+    100 ran out and failed its steps with rate limits.
   EOT
   type = object({
     type          = optional(string, "create")
     model         = optional(string, "gpt-6-sol")
     model_version = optional(string, "2026-09-22")
     sku           = optional(string, "DataZoneStandard")
-    capacity      = optional(number, 100)
+    capacity      = optional(number, 300)
   })
   default = {}
   validation {
@@ -172,16 +174,33 @@ variable "network" {
 
 variable "ingress" {
   description = <<-EOT
-    How users reach DataQube. internal = false (default): a static public IP.
-    internal = true: an internal load balancer at private_ip, inside
-    var.network's nodes subnet — for access over VPN or ExpressRoute. The DNS
-    records point at whichever address it is.
+    How users reach DataQube.
+    controller = "envoy" (default): the Envoy Gateway behind an Azure load
+      balancer. internal = false (default): a static public IP. internal =
+      true: an internal load balancer at private_ip, inside var.network's
+      nodes subnet — for access over VPN or ExpressRoute.
+    controller = "application_gateway": an Azure Application Gateway v2
+      (Standard_v2) in front, which the AKS add-on (AGIC) programs from the
+      release's Ingress objects. The gateway, its subnet and its public IP are
+      created here, inside var.network.
+    The DNS records point at whichever address it is.
   EOT
   type = object({
+    controller = optional(string, "envoy")
     internal   = optional(bool, false)
     private_ip = optional(string)
+    application_gateway = optional(object({
+      # The gateway's own subnet in var.network: AGIC on an overlay network
+      # needs one, /24 or smaller, in the nodes' virtual network.
+      subnet       = optional(string, "10.60.18.0/24")
+      max_capacity = optional(number, 2)
+    }), {})
   })
   default = {}
+  validation {
+    condition     = contains(["envoy", "application_gateway"], var.ingress.controller)
+    error_message = "ingress.controller must be \"envoy\" or \"application_gateway\"."
+  }
   validation {
     condition     = !var.ingress.internal || var.ingress.private_ip != null
     error_message = "ingress.private_ip is required with an internal ingress."
@@ -189,6 +208,18 @@ variable "ingress" {
   validation {
     condition     = !var.ingress.internal || var.network != null
     error_message = "An internal ingress needs var.network: its address is in the nodes subnet."
+  }
+  validation {
+    condition     = var.ingress.controller != "application_gateway" || var.network != null
+    error_message = "An Application Gateway needs var.network: it must sit in the nodes' virtual network."
+  }
+  validation {
+    condition     = var.ingress.controller != "application_gateway" || !var.ingress.internal
+    error_message = "ingress.internal applies to the Envoy Gateway only; the Application Gateway has a public address."
+  }
+  validation {
+    condition     = can(cidrnetmask(var.ingress.application_gateway.subnet)) ? tonumber(split("/", var.ingress.application_gateway.subnet)[1]) >= 24 : false
+    error_message = "ingress.application_gateway.subnet must be a CIDR of /24 or smaller (AGIC on an overlay network allows no more)."
   }
 }
 

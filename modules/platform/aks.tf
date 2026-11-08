@@ -65,6 +65,15 @@ resource "azurerm_kubernetes_cluster" "this" {
     type = "SystemAssigned"
   }
 
+  # Application Gateway mode: AGIC, the AKS add-on, programs the gateway
+  # (application_gateway.tf) from the release's Ingress objects.
+  dynamic "ingress_application_gateway" {
+    for_each = local.application_gateway ? [1] : []
+    content {
+      gateway_id = azurerm_application_gateway.this[0].id
+    }
+  }
+
   tags = local.tags
 }
 

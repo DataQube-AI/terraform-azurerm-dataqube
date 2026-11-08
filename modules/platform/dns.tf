@@ -12,17 +12,19 @@ data "azurerm_dns_zone" "existing" {
 }
 
 locals {
-  ingress_ip          = local.internal_ingress ? var.ingress.private_ip : azurerm_public_ip.ingress[0].ip_address
+  ingress_ip = local.application_gateway ? azurerm_public_ip.application_gateway[0].ip_address : (
+    local.internal_ingress ? var.ingress.private_ip : azurerm_public_ip.ingress[0].ip_address
+  )
   zone_id             = var.dns.create_zone ? azurerm_dns_zone.this[0].id : data.azurerm_dns_zone.existing[0].id
   zone_resource_group = var.dns.create_zone ? azurerm_resource_group.this.name : var.dns.existing_zone_resource_group_name
   app_fqdn            = "${var.dns.app_subdomain}.${var.dns.zone_name}"
   auth_fqdn           = "${var.dns.auth_subdomain}.${var.dns.zone_name}"
 }
 
-# The ingress address: in the cluster's node resource group, where AKS's own
-# identity may attach it to the gateway's load balancer.
+# The Envoy Gateway's public address: in the cluster's node resource group,
+# where AKS's own identity may attach it to the gateway's load balancer.
 resource "azurerm_public_ip" "ingress" {
-  count               = local.internal_ingress ? 0 : 1
+  count               = local.internal_ingress || local.application_gateway ? 0 : 1
   name                = "pip-${local.base}-ingress"
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_kubernetes_cluster.this.node_resource_group

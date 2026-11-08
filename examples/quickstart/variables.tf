@@ -42,6 +42,12 @@ variable "models" {
   default     = {}
 }
 
+variable "agent_token_verification" {
+  description = "See modules/app: how the orchestrator verifies agent pods' tokens, tokenReview or signingKeys (no cluster-wide permission)."
+  type        = string
+  default     = "tokenReview"
+}
+
 variable "features" {
   description = "See modules/platform: product features that can be left out (web_tools, speech, image_generation, memory_embeddings); all on by default."
   type        = any
